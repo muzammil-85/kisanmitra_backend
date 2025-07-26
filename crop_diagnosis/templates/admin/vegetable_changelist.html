@@ -1,0 +1,31 @@
+{% extends "admin/change_list.html" %}
+{% load static %}
+
+{% block content %}
+  <h2>Vegetables (Stored in Firestore)</h2>
+
+  <table class="adminlist">
+    <thead>
+      <tr>
+        <th>Name</th>
+        <th>Image</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for veg in vegetables %}
+        <tr>
+          <td>{{ veg.name }}</td>
+          <td><img src="{{ veg.image_url }}" width="100" /></td>
+        </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+
+  <hr>
+  <h3>Add New Vegetable</h3>
+  <form method="post" enctype="multipart/form-data">
+    {% csrf_token %}
+    {{ form.as_p }}
+    <button type="submit" class="default">Add</button>
+  </form>
+{% endblock %}
