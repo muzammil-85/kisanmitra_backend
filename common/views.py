@@ -6,7 +6,7 @@ from .serializers import FirestorePhoneLoginSerializer
 from django.http import JsonResponse
 from django.views.decorators.csrf import csrf_exempt
 import json
-from .firebase_config import db
+from kisanmitra_backend.firebase_config import db
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework import status
@@ -14,7 +14,20 @@ from .serializers import FirestoreRegisterSerializer
 from google.cloud import firestore
 import hashlib
 import uuid
-from firebase_admin import auth
+# from firebase_admin import auth
+# import os
+import uuid
+# import tempfile
+# from django.views import View
+from django.http import JsonResponse
+from django.views.decorators.csrf import csrf_exempt
+# from django.utils.decorators import method_decorator
+
+# from google.cloud import speech_v1p1beta1 as speech
+# from google.cloud import texttospeech
+# from firebase_admin import storage
+# import google.generativeai as genai
+# from pydub import AudioSegment
 
 db = firestore.Client()
 
@@ -33,7 +46,7 @@ class FirestoreRegisterAPIView(APIView):
                     "message": "registration failed",
                     "error_msg": "Email already exists",
                     "token": ""
-                }, status=status.HTTP_400_BAD_REQUEST)
+                }, status=status.HTTP_200_OK)
 
             # Hash the password (not plaintext!)
             hashed_password = hashlib.sha256(data['password'].encode()).hexdigest()
@@ -188,3 +201,67 @@ def get_user_profile(request):
 
     except Exception as e:
         return JsonResponse({"status": False, "message": f"Error: {str(e)}"}, status=500)
+
+
+# @method_decorator(csrf_exempt, name='dispatch')
+# class VoiceInteractionView(View):
+#     def post(self, request):
+#         try:
+#             audio_file = request.FILES.get('audio')
+
+#             if not audio_file:
+#                 return JsonResponse({"status": False, "message": "Missing audio file"}, status=400)
+
+#             # Save audio temporarily
+#             temp_audio_path = os.path.join(tempfile.gettempdir(), f"{uuid.uuid4()}.wav")
+#             with open(temp_audio_path, 'wb+') as f:
+#                 for chunk in audio_file.chunks():
+#                     f.write(chunk)
+
+#             # Convert to FLAC (Google STT preferred format)
+#             flac_path = temp_audio_path.replace(".wav", ".flac")
+#             sound = AudioSegment.from_file(temp_audio_path)
+#             sound.export(flac_path, format="flac")
+
+#             # Transcribe using Google Speech-to-Text
+#             speech_client = speech.SpeechClient()
+#             with open(flac_path, "rb") as audio:
+#                 audio_content = audio.read()
+
+#             audio_config = speech.RecognitionConfig(
+#                 encoding=speech.RecognitionConfig.AudioEncoding.FLAC,
+#                 language_code="en-US",
+#             )
+
+#             response = speech_client.recognize(
+#                 config=audio_config,
+#                 audio=speech.RecognitionAudio(content=audio_content),
+#             )
+
+#             transcribed_text = response.results[0].alternatives[0].transcript if response.results else ""
+
+#             if not transcribed_text:
+#                 return JsonResponse({"status": False, "message": "Couldn't transcribe audio."}, status=400)
+
+#             # Gemini Prompt Interaction
+#             genai.configure(api_key=os.getenv("GEMINI_API_KEY"))
+#             model = genai.GenerativeModel("gemini-1.5-pro")
+#             gemini_response = model.generate_content(transcribed_text)
+
+#             # Clean up
+#             os.remove(temp_audio_path)
+#             os.remove(flac_path)
+
+#             return JsonResponse({
+#                 "status": True,
+#                 "message": "Success",
+#                 "transcription": transcribed_text,
+#                 "gemini_reply": gemini_response.text
+#             })
+
+#         except Exception as e:
+#             return JsonResponse({
+#                 "status": False,
+#                 "message": "Voice AI interaction failed",
+#                 "error": str(e)
+#             }, status=500)

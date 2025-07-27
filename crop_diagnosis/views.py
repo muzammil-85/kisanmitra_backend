@@ -41,48 +41,40 @@ class UploadCropDiagnosisView(View):
                 for chunk in image_file.chunks():
                     f.write(chunk)
 
+            # Upload to cloud storage (e.g., Firebase Storage)
             bucket = storage.bucket("crop-images-bucket123")
             blob = bucket.blob(f"uploads/{filename}")
             blob.upload_from_filename(temp_file_path)
             blob.make_public()
             public_url = blob.public_url
 
-            image = Image.open(temp_file_path)
-            genai.configure(api_key=os.environ.get("GEMINI_API_KEY"))
-            model = genai.GenerativeModel("gemini-1.5-flash")
+            # Use Image.open in a safe context (ensures file is closed after use)
+            with Image.open(temp_file_path) as image:
+                # Run the diagnosis using Gemini AI model
+                genai.configure(api_key=os.environ.get("GEMINI_API_KEY"))
+                model = genai.GenerativeModel("gemini-1.5-flash")
+                response = model.generate_content([prompt, image])
 
-            response = model.generate_content([prompt, image])
-            diagnosis_raw = eval(response.text)
-            timeout_weeks = int(diagnosis_raw["timeout"])
+            # Clean up the markdown (strip the ```json ... ``` block)
+            clean_response = response.text.strip('```json\n').strip('\n```')
 
-            db = firestore.client()
-            db.collection("diagnosis").add({
-                "user_token": token,
-                "timestamp": datetime.utcnow().isoformat(),
-                "prompt": prompt,
-                "image_url": public_url,
-                "diagnosis": diagnosis_raw,
-                "timeout_weeks": timeout_weeks
-            })
-
-            schedule_fcm_notification(
-                token=token,
-                title="Follow-up Crop Diagnosis",
-                body="Please upload a follow-up image of your crop for second diagnosis.",
-                delay_weeks=timeout_weeks
-            )
-
+            # Remove the temporary file after processing
             os.remove(temp_file_path)
 
             return JsonResponse({
                 "status": True,
                 "message": "Diagnosis successful",
                 "image_url": public_url,
-                "diagnosis": diagnosis_raw
+                "diagnosis": clean_response
             })
 
         except Exception as e:
-            return JsonResponse({"status": False, "message": "Diagnosis failed", "error_msg": str(e)}, status=500)
+            return JsonResponse({
+                "status": False,
+                "message": "Diagnosis failed",
+                "error_msg": str(e)
+            }, status=500)
+
 
 
 @method_decorator(csrf_exempt, name='dispatch')
@@ -154,4 +146,32 @@ Prompt from Farmer: {prompt}
             })
 
         except Exception as e:
-            return JsonResponse({"status": False, "message": "Second diagnosis failed", "error_msg": str(e)}, status=500)
+            return JsonResponse({
+                "status": False,
+                "message": "Second diagnosis failed",
+                "error_msg": str(e)
+            }, status=500)
+
+
+@method_decorator(csrf_exempt, name='dispatch')
+class ListVegetablesView(View):
+    def get(self, request):
+        try:
+            db = firestore.client()
+            items_ref = db.collection("crops").document("vegetable").collection("items")
+            docs = items_ref.stream()
+
+            vegetables = []
+            for doc in docs:
+                data = doc.to_dict()
+                data["id"] = doc.id  # include ID if needed
+                vegetables.append(data)
+
+            return JsonResponse({"status": True, "vegetables": vegetables}, status=200)
+
+        except Exception as e:
+            return JsonResponse({
+                "status": False,
+                "message": "Failed to fetch vegetable items",
+                "error": str(e)
+            }, status=500)

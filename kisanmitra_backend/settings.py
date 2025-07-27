@@ -17,13 +17,14 @@ from pathlib import Path
 BASE_DIR = Path(__file__).resolve().parent.parent
 
 from dotenv import load_dotenv
-
 load_dotenv()
 
 FIREBASE_CREDENTIALS = os.getenv("GOOGLE_APPLICATION_CREDENTIALS")
-# Set for Firestore client
-os.environ["GOOGLE_APPLICATION_CREDENTIALS"] = FIREBASE_CREDENTIALS
 
+if FIREBASE_CREDENTIALS:
+    os.environ["GOOGLE_APPLICATION_CREDENTIALS"] = FIREBASE_CREDENTIALS
+else:
+    print("⚠️ Warning: GOOGLE_APPLICATION_CREDENTIALS not set.")
 
 
 
@@ -52,6 +53,11 @@ INSTALLED_APPS = [
     'rest_framework',
     'crop_diagnosis',
     'common',
+    'market_price',
+    'agri_schemes',
+    'community',
+    # 'finance_manager',
+    
 ]
 
 MIDDLEWARE = [
@@ -129,8 +135,9 @@ USE_TZ = True
 
 # Static files (CSS, JavaScript, Images)
 # https://docs.djangoproject.com/en/4.2/howto/static-files/
+STATIC_URL = '/static/'
+STATIC_ROOT = os.path.join(BASE_DIR, 'static')
 
-STATIC_URL = 'static/'
 
 # Default primary key field type
 # https://docs.djangoproject.com/en/4.2/ref/settings/#default-auto-field
